@@ -13,7 +13,7 @@ import {
   FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import ApiService from '../services/apiService'
+import ApiService from '../services/ApiService'
 
 const VideoLibrary = ({ videos, onVideoDeleted }) => {
   const [selectedVideo, setSelectedVideo] = useState(null)
