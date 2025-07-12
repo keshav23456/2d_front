@@ -19,7 +19,7 @@ import VideoGenerator from './components/VideoGenerator'
 import VideoLibrary from './components/VideoLibrary'
 import Header from './components/Header'
 import Footer from './components/Footer'
-import ApiService from './services/apiService'
+import { manimApi } from './services/ManimApiService'
 
 function App() {
   const [activeTab, setActiveTab] = useState('generate')
@@ -34,7 +34,7 @@ function App() {
 
   const checkBackendStatus = async () => {
     try {
-      const response = await ApiService.getStatus()
+      const response = await manimApi.getApiStatus()
       setBackendStatus('connected')
       toast.success('Connected to backend successfully!')
     } catch (error) {
@@ -45,10 +45,11 @@ function App() {
 
   const checkAiStatus = async () => {
     try {
-      const status = await ApiService.getAiStatus()
+      const status = await manimApi.getAiStatus()
       setAiStatus(status)
     } catch (error) {
       console.error('Failed to check AI status:', error)
+      setAiStatus({ ready_for_ai: false, error: error.message })
     }
   }
 
@@ -60,6 +61,12 @@ function App() {
   const handleVideoDeleted = (videoId) => {
     setVideos(prev => prev.filter(video => video.video_id !== videoId))
     toast.success('Video deleted successfully')
+  }
+
+  const handleRefreshStatus = () => {
+    setBackendStatus('checking')
+    checkBackendStatus()
+    checkAiStatus()
   }
 
   return (
@@ -75,10 +82,7 @@ function App() {
         <Header 
           backendStatus={backendStatus}
           aiStatus={aiStatus}
-          onRefreshStatus={() => {
-            checkBackendStatus()
-            checkAiStatus()
-          }}
+          onRefreshStatus={handleRefreshStatus}
         />
 
         <main className="container mx-auto px-4 py-8">

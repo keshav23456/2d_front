@@ -13,33 +13,30 @@ import {
   FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import ApiService from '../services/ApiService'
+import  manimApi from '../services/ManimApiService'
 
 const VideoLibrary = ({ videos, onVideoDeleted }) => {
   const [selectedVideo, setSelectedVideo] = useState(null)
   const [isDeleting, setIsDeleting] = useState(null)
+  const [isDownloading, setIsDownloading] = useState(null)
 
   const handleDownload = async (video) => {
+    setIsDownloading(video.video_id)
     try {
       toast.loading('Preparing download...', { id: 'download' })
       
-      const response = await ApiService.downloadVideo(video.video_id)
-      
-      // Create blob and download
-      const blob = new Blob([response.data], { type: 'video/mp4' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `manim_animation_${video.video_id}.mp4`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
+      // Use the new API service method
+      const result = await manimApi.downloadVideoBlob(
+        video.video_id, 
+        `manim_animation_${video.video_id}.mp4`
+      )
       
       toast.success('Download started!', { id: 'download' })
     } catch (error) {
       console.error('Download error:', error)
-      toast.error('Failed to download video', { id: 'download' })
+      toast.error(error.message || 'Failed to download video', { id: 'download' })
+    } finally {
+      setIsDownloading(null)
     }
   }
 
@@ -50,11 +47,12 @@ const VideoLibrary = ({ videos, onVideoDeleted }) => {
 
     setIsDeleting(video.video_id)
     try {
-      await ApiService.deleteVideo(video.video_id)
+      await manimApi.deleteVideo(video.video_id)
       onVideoDeleted(video.video_id)
+      toast.success('Video deleted successfully')
     } catch (error) {
       console.error('Delete error:', error)
-      toast.error('Failed to delete video')
+      toast.error(error.message || 'Failed to delete video')
     } finally {
       setIsDeleting(null)
     }
@@ -62,6 +60,11 @@ const VideoLibrary = ({ videos, onVideoDeleted }) => {
 
   const handlePreview = (video) => {
     setSelectedVideo(video)
+  }
+
+  // Helper function to get video URL
+  const getVideoUrl = (videoId) => {
+    return `${manimApi.baseURL}/download/${videoId}`
   }
 
   if (videos.length === 0) {
@@ -138,7 +141,7 @@ const VideoLibrary = ({ videos, onVideoDeleted }) => {
                     poster="/api/placeholder/320/180"
                     preload="none"
                   >
-                    <source src={ApiService.getDownloadUrl(video.video_id)} type="video/mp4" />
+                    <source src={getVideoUrl(video.video_id)} type="video/mp4" />
                   </video>
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
                     <button
@@ -191,9 +194,14 @@ const VideoLibrary = ({ videos, onVideoDeleted }) => {
                 
                 <button
                   onClick={() => handleDownload(video)}
-                  className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg transition-colors"
+                  disabled={isDownloading === video.video_id}
+                  className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" />
+                  {isDownloading === video.video_id ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                 </button>
                 
                 <button
@@ -255,7 +263,7 @@ const VideoLibrary = ({ videos, onVideoDeleted }) => {
                     controls
                     autoPlay
                     className="w-full h-full"
-                    src={ApiService.getDownloadUrl(selectedVideo.video_id)}
+                    src={getVideoUrl(selectedVideo.video_id)}
                   >
                     Your browser does not support the video tag.
                   </video>
@@ -311,9 +319,14 @@ const VideoLibrary = ({ videos, onVideoDeleted }) => {
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => handleDownload(selectedVideo)}
-                  className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  disabled={isDownloading === selectedVideo.video_id}
+                  className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" />
+                  {isDownloading === selectedVideo.video_id ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                   <span>Download</span>
                 </button>
                 <button
